@@ -1,6 +1,8 @@
-# Script listing for the INTERVAL RNA-seq manuscript
+# Code repository for the INTERVAL RNA-seq manuscript
 
-| File    | Description |
+The RNA-sequencing data pre-processing was done with a Nextflow pipeline available [here](https://github.com/wtsi-hgi/nextflow-pipelines/blob/rna_seq_interval_5591/pipelines/rna_seq.nf).
+
+| File/Folder   | Description |
 | -------- | ------- |
 | `eQTL_mapping` | Pipeline for the eQTL mapping |
 | `splice_event_annotation.R` | Pipeline for the annotation of sQTLs |
