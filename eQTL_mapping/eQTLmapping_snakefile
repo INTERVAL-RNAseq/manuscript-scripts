@@ -1,0 +1,213 @@
+#!/usr/bin/env python
+import pandas as pd
+
+#configfile: "config/config.yaml"
+
+# Input
+initial_directory="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/"
+
+# Programs
+shell.prefix("module load R/4.0.3; ") # R libraries were handled locally
+
+# Result directory
+output_directory="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/"
+
+# Main rule
+
+rule all:
+	input:
+		# cis-eQTL results
+		output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisPerGene_ALLchr.csv",
+		expand(output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisNominal_chr{chr}.csv", chr=range(1,23)),
+		expand(output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cis_chr{chr}_significant_eGenes.csv", chr=range(1,23)),
+		expand(output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cis_chr{chr}_significant_eSNPs.csv", chr=range(1,23)),
+		output_directory + "results/cis_eQTLs/indep_summary/allresults_cojo.csv",
+		# trans-eQTL results
+		expand(output_directory + "results/trans_eQTLs/tensorqtl_trans_MAF0.005_chr{chr_pheno}pheno_chr{chr_geno}geno_cisindep.csv.filter_cis.annotated.csv", chr_pheno=range(1,23), chr_geno=range(1,23))
+
+
+# Output phenotype .bed files for use in TensorQTL
+rule Create_PhenotypeBedFile:
+	input:
+		omictable=initial_directory + "covariates/processed/INTERVAL_omics_table_19FEB2021.csv",
+		normalized=initial_directory + "Data/Final_QCd_Filtered/INTERVAL_FilteredSamplesGenes_swapsSwappedMismatchRemoved_TMMNorm_InverseRankedValues.csv",
+		xfam=initial_directory + "genotypes/INTERVAL_RNAseq_Phase1-3_imputed_b38_biallelic_MAF0.005_chr22.fam"
+	output:
+		output_directory + "phenotypes/INTERVAL_RNAseq_phase1-2_filteredSamplesGenes_TMMNormalised_FPKM_Counts_foranalysis.bed",
+		expand(output_directory + "phenotypes/INTERVAL_RNAseq_phase1-2_filteredSamplesGenes_TMMNormalised_FPKM_Counts_foranalysis_chr{chr}.bed", chr=range(1,24))
+	params:
+		output_dir=output_directory + "phenotypes/",
+		anno=initial_directory + "annotation_file/Feature_Annotation_Ensembl_gene_ids_ensembl99.txt"
+	shell:
+		"""
+		R -q --vanilla --args {input.omictable} \
+			{input.normalized} \
+			{params.anno} \
+			{input.xfam} \
+			{params.output_dir} \
+			< scripts/3_1_make_tensorQTL_input_phase2.R
+		"""
+
+# Compress and index .bed files from previous step
+rule Compress_PhenotypeBedFile:
+	input:
+		output_directory + "phenotypes/INTERVAL_RNAseq_phase1-2_filteredSamplesGenes_TMMNormalised_FPKM_Counts_foranalysis.bed",
+		expand(output_directory + "phenotypes/INTERVAL_RNAseq_phase1-2_filteredSamplesGenes_TMMNormalised_FPKM_Counts_foranalysis_chr{chr}.bed", chr=range(1,23))
+	output:
+		expand(output_directory + "phenotypes/INTERVAL_RNAseq_phase1-2_filteredSamplesGenes_TMMNormalised_FPKM_Counts_foranalysis.bed.{ext}", ext=["gz", "gz.tbi"]),
+		expand(output_directory + "phenotypes/INTERVAL_RNAseq_phase1-2_filteredSamplesGenes_TMMNormalised_FPKM_Counts_foranalysis_chr{chr}.bed.{ext}", chr=range(1,24), ext=["gz", "gz.tbi"])
+	params:
+		output_dir=output_directory + "phenotypes/"
+	shell:
+		"""
+		source scripts/3_2_index_bed.sh {params.output_dir}
+		"""
+
+#-----------------------------------
+# Cis-eQTL analysis
+#-----------------------------------
+
+rule PvalThresh_CisEQTL:
+	input:
+		expand(output_directory + "phenotypes/INTERVAL_RNAseq_phase1-2_filteredSamplesGenes_TMMNormalised_FPKM_Counts_chr{chr}.bed.gz", chr=range(1,23)),
+		covar=initial_directory + "covariates/INTERVAL_RNAseq_phase1-2_fullcovariates_foranalysis_affyID.txt"
+	output:
+		pergene=output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisPerGene_ALLchr.csv",
+	conda:
+		"envs/tensorQTL_env.yml"
+	params:
+		bed_prefix=output_directory + "phenotypes/INTERVAL_RNAseq_phase1-2_filteredSamplesGenes_TMMNormalised_FPKM_Counts_chr",
+		plink_prefix_path=initial_directory + "genotypes/INTERVAL_RNAseq_Phase1-3_imputed_b38_biallelic_MAF0.005_chr"
+	shell:
+		"""
+        . /etc/profile.d/modules.sh 
+		module purge
+		module load rhel7/default-gpu
+
+		stdbuf -oL python scripts/3_3b_pergene_pvalthresholds.py \
+		{params.bed_prefix} \
+		{input.covar} \
+		{params.plink_prefix_path} \
+		{output.pergene} 
+		"""
+
+
+rule Mapping_CisEQTL:
+	input:
+		bed=output_directory + "phenotypes/INTERVAL_RNAseq_phase1-2_filteredSamplesGenes_TMMNormalised_FPKM_Counts_foranalysis_chr{chr}.bed.gz",
+		covar=initial_directory + "covariates/INTERVAL_RNAseq_phase1-2_fullcovariates_foranalysis_affyID.txt"
+	output:
+		nominal=output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisNominal_chr{chr}.csv"
+	conda:
+		"envs/tensorQTL_env.yml"
+	params:
+		outdir=output_directory,
+		plink_prefix_path=initial_directory + "genotypes/INTERVAL_RNAseq_Phase1-3_imputed_b38_biallelic_MAF0.005_chr{chr}",
+		nominal_prefix=output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisNominal_chr{chr}"
+	shell:
+		"""
+        . /etc/profile.d/modules.sh 
+		module purge
+		module load rhel7/default-gpu
+
+		python scripts/3_3b_map_cis_eQTLs.py \
+		{params.outdir} \
+		{wildcards.chr} \
+		{input.bed} \
+		{input.covar} \
+		{params.plink_prefix_path} \
+		{params.nominal_prefix}
+
+		"""
+
+# Annotate cis results with positions and allele information and call eGenes and eSNPs
+rule Call_cis_eSNPs:
+	input:
+		pergene=output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisPerGene_ALLchr.csv",
+		nominal=expand(output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisNominal_chr{chr}.csv", chr=range(1,23))
+	output:
+		results_genes=expand(output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cis_chr{chr}_significant_eGenes.csv", chr=range(1,23)),
+		results_snps=expand(output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cis_chr{chr}_significant_eSNPs.csv", chr=range(1,23))
+	params:
+		prefix_nominal=output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisNominal_chr",
+		prefix_bim=initial_directory + "genotypes/INTERVAL_RNAseq_Phase1-3_imputed_b38_biallelic_MAF0.005_chr",
+		b37_b38_map_file=str("/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/01_cis_eqtl_mapping/GENETIC_DATA/b37_b38_liftover/INTERVAL_chr$_b37_to_b38_map.txt"),
+		info_file="/rds/project/jmmh2/rds-jmmh2-post_qc_data/interval/reference_files/genetic/reference_files_genotyped_imputed/impute_$_interval.snpstats",
+		prefix_results=output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cis_chr"
+	shell:
+		"""
+		R -q --vanilla --args {input.pergene} {params.prefix_nominal} {params.prefix_bim} {params.prefix_results} {params.b37_b38_map_file} {params.info_file} < scripts/3_3c_call_cis_eSNPs.R
+		"""
+
+# conditional analysis to identify independent signals
+rule ConditionalAnalysis_CisEQTL:
+	input: 
+		nominal_file = output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisNominal_chr{chr}.annotated.csv",
+		egene_file = output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cis_chr{chr}_significant_eGenes.csv"
+	output:
+		list_output= output_directory + "results/cis_eQTLs/indep_112022/cojooutput_tensorqtl_cis_MAF0.005_cisNominal_chr{chr}.outputs"
+	params:
+		plink_prefix_path = initial_directory  + "genotypes/INTERVAL_RNAseq_Phase1-3_imputed_b38_biallelic_MAF0.005_chr{chr}"
+	shell:
+		"""
+		source scripts/3_3d_cojo_ciseQTL.sh {wildcards.chr}
+		"""
+
+rule ConditionalAnalysis_CisEQTL_merge:
+	input:
+		expand(output_directory + "results/cis_eQTLs/indep_112022/cojooutput_tensorqtl_cis_MAF0.005_cisNominal_chr{chr}.outputs", chr=range(1,23))
+	output:
+		output_directory + "results/cis_eQTLs/indep_summary/allresults_cojo.csv"
+	shell:
+		"""
+		R -q --vanilla < scripts/3_3e_cojo_ciseQTL_merge.R 
+		"""
+
+#-----------------------------------
+# Trans-eQTL analysis
+#-----------------------------------
+rule Mapping_TransEQTL_cisindep:
+	input:
+		bed=output_directory + "phenotypes/INTERVAL_RNAseq_phase1-2_filteredSamplesGenes_TMMNormalised_FPKM_Counts_foranalysis_chr{chr_pheno}.bed.gz",
+		covar=initial_directory + "covariates/INTERVAL_RNAseq_phase1-2_fullcovariates_foranalysis_affyID.txt",
+		indepsignals=output_directory + "results/cis_eQTLs/indep_summary/allresults_cojo.csv"
+	output:
+		nofilter=output_directory + "results/trans_eQTLs/tensorqtl_trans_MAF0.005_chr{chr_pheno}pheno_chr{chr_geno}geno_cisindep.csv",
+		filter=output_directory + "results/trans_eQTLs/tensorqtl_trans_MAF0.005_chr{chr_pheno}pheno_chr{chr_geno}geno_cisindep.csv.filter_cis"
+	conda:
+		"envs/tensorQTL_env.yml"
+	params:
+		outdir=output_directory,
+		plink_prefix_path=initial_directory + "genotypes/INTERVAL_RNAseq_Phase1-3_imputed_b38_biallelic_MAF0.005_chr{chr_geno}",
+	shell:
+		"""
+		. /etc/profile.d/modules.sh 
+		module purge
+		module load rhel7/default-gpu
+
+		python scripts/3_4a_map_trans_eQTLs_cisindep.py \
+		{params.outdir} \
+		{input.bed} \
+		{input.covar} \
+		{params.plink_prefix_path} \
+		{input.indepsignals} \
+		{output.nofilter}
+
+		"""
+
+rule annotate_trans_eQTLs_cisindep:
+	input:
+		output_directory + "results/trans_eQTLs/tensorqtl_trans_MAF0.005_chr{chr_pheno}pheno_chr{chr_geno}geno_cisindep.csv.filter_cis"
+	output:
+		output_directory + "results/trans_eQTLs/tensorqtl_trans_MAF0.005_chr{chr_pheno}pheno_chr{chr_geno}geno_cisindep.csv.filter_cis.annotated.csv"
+	params:
+		prefix_bim=initial_directory + "genotypes/INTERVAL_RNAseq_Phase1-3_imputed_b38_biallelic_MAF0.005_chr",
+	shell:
+		"""
+        scripts/eQTLmapping/modules_env_loading.sh
+
+		R -q --vanilla --args {input} {wildcards.chr_geno} {params.prefix_bim} < scripts/3_4c_annotate_trans_eQTLs.R
+
+		"""
+
+# TODO: add the step to filter significant results
