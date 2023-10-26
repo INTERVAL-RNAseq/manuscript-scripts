@@ -22,5 +22,4 @@ The pipeline contains :
     * `3_3a_map_cis_eQTLs.py`
     * `3_3e_cojo_ciseQTL_merge.R`
 
-
-
+Note: Some of the code was copied and adapted from Jonathan Marten [github page](https://github.com/JonMarten/RNAseq) from first stage analysis.
