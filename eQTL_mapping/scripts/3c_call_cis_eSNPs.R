@@ -1,3 +1,5 @@
+# Filtering significant cis-egenes and cis-esnps
+
 args=commandArgs(trailingOnly=TRUE)
 pergene=args[1]
 prefix_nominal=args[2]
@@ -6,11 +8,11 @@ prefix_results=args[4]
 b37_b38_map_file=args[5]
 info_file=args[6]
 
-# pergene="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisPerGene_ALLchr.csv"
-# prefix_nominal="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisNominal_chr"
-# prefix_bim="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/genotypes/INTERVAL_RNAseq_Phase1-3_imputed_b38_biallelic_MAF0.005_chr"
-# prefix_results="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/results/cis_eQTLs/tensorqtl_cis_MAF0.005_cis_chr"
-b37_b38_map_file="~/rds/rds-jmmh2-projects/interval_rna_seq/analysis/01_cis_eqtl_mapping/GENETIC_DATA/b37_b38_liftover/INTERVAL_chr$_b37_to_b38_map.txt"
+# pergene="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisPerGene_ALLchr.csv"
+# prefix_nominal="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisNominal_chr"
+# prefix_bim="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/genotypes/INTERVAL_RNAseq_Phase1-3_imputed_b38_biallelic_MAF0.005_chr"
+# prefix_results="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/results/cis_eQTLs/tensorqtl_cis_MAF0.005_cis_chr"
+b37_b38_map_file="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/01_cis_eqtl_mapping/GENETIC_DATA/b37_b38_liftover/INTERVAL_chr$_b37_to_b38_map.txt"
 info_file="/rds/project/jmmh2/rds-jmmh2-post_qc_data/interval/reference_files/genetic/reference_files_genotyped_imputed/impute_$_interval.snpstats"
 
 library(dplyr)

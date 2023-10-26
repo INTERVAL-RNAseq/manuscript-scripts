@@ -4,13 +4,13 @@ import pandas as pd
 #configfile: "config/config.yaml"
 
 # Input
-initial_directory="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/"
+initial_directory="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/"
 
 # Programs
 shell.prefix("module load R/4.0.3; ") # R libraries were handled locally
 
 # Result directory
-output_directory="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/"
+output_directory="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/"
 
 # Main rule
 
@@ -45,7 +45,7 @@ rule Create_PhenotypeBedFile:
 			{params.anno} \
 			{input.xfam} \
 			{params.output_dir} \
-			< scripts/3_1_make_tensorQTL_input_phase2.R
+			< scripts/1_make_tensorQTL_input_phase2.R
 		"""
 
 # Compress and index .bed files from previous step
@@ -60,7 +60,7 @@ rule Compress_PhenotypeBedFile:
 		output_dir=output_directory + "phenotypes/"
 	shell:
 		"""
-		source scripts/3_2_index_bed.sh {params.output_dir}
+		source scripts/2_index_bed.sh {params.output_dir}
 		"""
 
 #-----------------------------------
@@ -84,7 +84,7 @@ rule PvalThresh_CisEQTL:
 		module purge
 		module load rhel7/default-gpu
 
-		stdbuf -oL python scripts/3_3b_pergene_pvalthresholds.py \
+		stdbuf -oL python scripts/3b_pergene_pvalthresholds.py \
 		{params.bed_prefix} \
 		{input.covar} \
 		{params.plink_prefix_path} \
@@ -110,7 +110,7 @@ rule Mapping_CisEQTL:
 		module purge
 		module load rhel7/default-gpu
 
-		python scripts/3_3b_map_cis_eQTLs.py \
+		python scripts/3a_map_cis_eQTLs.py \
 		{params.outdir} \
 		{wildcards.chr} \
 		{input.bed} \
@@ -136,7 +136,7 @@ rule Call_cis_eSNPs:
 		prefix_results=output_directory + "results/cis_eQTLs/tensorqtl_cis_MAF0.005_cis_chr"
 	shell:
 		"""
-		R -q --vanilla --args {input.pergene} {params.prefix_nominal} {params.prefix_bim} {params.prefix_results} {params.b37_b38_map_file} {params.info_file} < scripts/3_3c_call_cis_eSNPs.R
+		R -q --vanilla --args {input.pergene} {params.prefix_nominal} {params.prefix_bim} {params.prefix_results} {params.b37_b38_map_file} {params.info_file} < scripts/3c_call_cis_eSNPs.R
 		"""
 
 # conditional analysis to identify independent signals
@@ -150,7 +150,7 @@ rule ConditionalAnalysis_CisEQTL:
 		plink_prefix_path = initial_directory  + "genotypes/INTERVAL_RNAseq_Phase1-3_imputed_b38_biallelic_MAF0.005_chr{chr}"
 	shell:
 		"""
-		source scripts/3_3d_cojo_ciseQTL.sh {wildcards.chr}
+		source scripts/3d_cojo_ciseQTL.sh {wildcards.chr}
 		"""
 
 rule ConditionalAnalysis_CisEQTL_merge:
@@ -160,7 +160,7 @@ rule ConditionalAnalysis_CisEQTL_merge:
 		output_directory + "results/cis_eQTLs/indep_summary/allresults_cojo.csv"
 	shell:
 		"""
-		R -q --vanilla < scripts/3_3e_cojo_ciseQTL_merge.R 
+		R -q --vanilla < scripts/3e_cojo_ciseQTL_merge.R 
 		"""
 
 #-----------------------------------
@@ -185,7 +185,7 @@ rule Mapping_TransEQTL_cisindep:
 		module purge
 		module load rhel7/default-gpu
 
-		python scripts/3_4a_map_trans_eQTLs_cisindep.py \
+		python scripts/4a_map_trans_eQTLs_cisindep.py \
 		{params.outdir} \
 		{input.bed} \
 		{input.covar} \
@@ -206,7 +206,7 @@ rule annotate_trans_eQTLs_cisindep:
 		"""
         scripts/eQTLmapping/modules_env_loading.sh
 
-		R -q --vanilla --args {input} {wildcards.chr_geno} {params.prefix_bim} < scripts/3_4c_annotate_trans_eQTLs.R
+		R -q --vanilla --args {input} {wildcards.chr_geno} {params.prefix_bim} < scripts/4b_annotate_trans_eQTLs.R
 
 		"""
 

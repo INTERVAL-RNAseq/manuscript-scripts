@@ -11,9 +11,6 @@ path = str(sys.argv[1])
 # Specify output path (and prefix if desired). Can be set to any folder if you want it outside the analysis directory
 outpath = path + "results/trans_eQTLs/"
 
-# Get analysis chromosome from command line arguments, this in turn comes from SLURM array ID
-# chr = str(sys.argv[2]) 
-
 # Set up file paths
 phenotype_bed_file=str(sys.argv[2])
 covariates_file=str(sys.argv[3])
@@ -22,10 +19,10 @@ indepsignals_file=str(sys.argv[5])
 trans_df_outfile=str(sys.argv[6])
 print("output file is " + trans_df_outfile)
 
-# phenotype_bed_file="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/phenotypes/INTERVAL_RNAseq_phase1-2_filteredSamplesGenes_TMMNormalised_FPKM_Counts_foranalysis_chr17.bed.gz"
-# covariates_file="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/covariates/INTERVAL_RNAseq_phase1-2_fullcovariates_foranalysis_affyID.txt"
-# plink_prefix_path="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/genotypes/INTERVAL_RNAseq_Phase1-3_imputed_b38_biallelic_MAF0.005_chr17"
-# indepsignals_file="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/results/cis_eQTLs/indep_summary/allresults_cojo.csv"
+# phenotype_bed_file="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/phenotypes/INTERVAL_RNAseq_phase1-2_filteredSamplesGenes_TMMNormalised_FPKM_Counts_foranalysis_chr17.bed.gz"
+# covariates_file="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/covariates/INTERVAL_RNAseq_phase1-2_fullcovariates_foranalysis_affyID.txt"
+# plink_prefix_path="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/genotypes/INTERVAL_RNAseq_Phase1-3_imputed_b38_biallelic_MAF0.005_chr17"
+# indepsignals_file="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/results/cis_eQTLs/indep_summary/allresults_cojo.csv"
 
 # Read in phenotypes
 phenotype_df, phenotype_pos_df = tensorqtl.read_phenotype_bed(phenotype_bed_file)
@@ -49,7 +46,6 @@ genotype_df=genotype_df2
 
 # Reading list of indep signals and selecting them
 indepsignals=pd.read_csv(indepsignals_file)
-#list_variants=list(set(indepsignals['variant_id']))
 list_variants=list(set(indepsignals['SNP']))
 genotype_df2=genotype_df.loc[genotype_df.index.isin(list_variants)]
 variant_df2=variant_df.loc[variant_df.index.isin(list_variants)]

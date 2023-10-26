@@ -10,10 +10,10 @@ covariates_file=str(sys.argv[2])
 plink_prefix_path=str(sys.argv[3])   
 cis_df_outfile=str(sys.argv[4]) 
 
-# phenotype_bed_file="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/phenotypes/INTERVAL_RNAseq_phase1-2_filteredSamplesGenes_TMMNormalised_FPKM_Counts_foranalysis_chr"
-# covariates_file="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/covariates/INTERVAL_RNAseq_phase1-2_fullcovariates_foranalysis_affyID.txt"
-# plink_prefix_path="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/genotypes/INTERVAL_RNAseq_Phase1-3_imputed_b38_biallelic_MAF0.005_chr"
-# cis_df_outfile="/home/ep620/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisPerGene_ALLchr.csv"
+# phenotype_bed_file="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/phenotypes/INTERVAL_RNAseq_phase1-2_filteredSamplesGenes_TMMNormalised_FPKM_Counts_foranalysis_chr"
+# covariates_file="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/covariates/INTERVAL_RNAseq_phase1-2_fullcovariates_foranalysis_affyID.txt"
+# plink_prefix_path="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/genotypes/INTERVAL_RNAseq_Phase1-3_imputed_b38_biallelic_MAF0.005_chr"
+# cis_df_outfile="/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/results/cis_eQTLs/tensorqtl_cis_MAF0.005_cisPerGene_ALLchr.csv"
 
 autosomal_chromosomes=[str(i) for i in range(1,23)]
 cis_total_df=[]

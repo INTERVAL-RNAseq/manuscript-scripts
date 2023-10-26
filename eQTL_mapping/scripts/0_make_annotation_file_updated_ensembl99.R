@@ -1,3 +1,5 @@
+# Creating a gene description file with Ensembl v99 annotation
+
 library(dplyr)
 library(data.table)
 library(biomaRt)
@@ -36,12 +38,5 @@ gene_ensembl=gene_ensembl%>%
             TSS=transcription_start_site)%>%        
     dplyr::select(feature_id, chromosome, start, end, feature_strand, gene_name, TSS, gene_biotype, description, gene_biotype, hgnc_id, hgnc_symbol, entrezgene_id)
 
-write.table(gene_ensembl, "~/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/annotation_file/Feature_Annotation_Ensembl_gene_ids_ensembl99.txt", quote=FALSE, row.names=FALSE, col.names=TRUE, sep="\t")
+write.table(gene_ensembl, "/rds/project/jmmh2/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/annotation_file/Feature_Annotation_Ensembl_gene_ids_ensembl99.txt", quote=FALSE, row.names=FALSE, col.names=TRUE, sep="\t")
 
-# checking if all gene ids from raw rnaseq count matrix are annotated
-initialdata=fread("~/rds/rds-jmmh2-projects/interval_rna_seq/analysis/06_AllSamples_Final_Analysis/Data/Final_QCd_Filtered/INTERVAL_FilteredSamplesGenes_swapsSwappedMismatchRemoved_TMMNorm_InverseRankedValues.csv")
-# 19835 initialdata_genes
-initialdata_genes=colnames(initialdata)[-1]
-nomatch2=which(!initialdata_genes %in% gene_ensembl$ensembl_gene_id)
-#0 which don't match
-nomatch2=which(!initialdata_genes %in% gene_ensembl$feature_id)
