@@ -1,6 +1,15 @@
-# Read in a file with leafcutter intron ids (here as $phenotype_id)
-sqd = read.table('tensorqtl_cis_MAF0.01_cisPerGene_allChr.tsv',
-                header=TRUE)
+options(stringsAsFactors=FALSE)
+suppressPackageStartupMessages({
+library("stringr")
+library("dplyr")
+library("rlang")
+library("GenomicRanges")
+library("GenomicFeatures")
+library("rtracklayer")
+})
+
+# All we need to start is a table with one column (here $phenotype_id) of the sQTL phenotype IDs
+sqd = read.table("INTERVAL_sQTL_ids.tsv", header=TRUE)
 rownames(sqd) = sqd$phenotype_id
 
 # Extract intron chromosome, strand, start, end, cluster ID
@@ -10,7 +19,7 @@ splice_info$splice_strand = str_sub(sqd$phenotype_id, -1, -1)
 sqd = cbind.data.frame(sqd,splice_info)
 
 # Read in leafcutter exon input (i.e. Gencode 33) and convert to ranges
-exons = read.table("/lustre/scratch119/realdata/mdt3/projects/interval_rna/interval_rna_seq_n5188/alex/splice/sqtl_4732/autosomes_octCovs_groups/exons/out_id_v33_gtype.txt.gz",
+exons = read.table("out_id_v33_gtype.txt.gz",
                   sep="\t", header=TRUE)
 exons$chr = substr(exons$chr,4,30)
 exons$gene_id = substr(exons$gene_id,1,15)
@@ -29,16 +38,10 @@ ov_start=as.data.frame(findOverlaps(start_ranges,genes_granges_us))
 sqd$start_match = FALSE
 for (i in 1:nrow(sqd)) {
     ge = genes[ov_start[which(ov_start$queryHits==i),]$subjectHits,]$gene_id
-    a = c()
-    # Make sure each gene greps in sqd$gene_id
     start_matches = c()
     for (g in ge) {
-        a = c(a,grepl(g,sqd$gene_id[i]))
-        if (grepl(g,sqd$gene_id[i])) {
-            start_matches=c(start_matches,g)
-        }
+        start_matches=c(start_matches,g)
     }
-    sqd$start_match[i] = any(a)
     sqd$start_matches[i] = paste0(start_matches,collapse=",")
 }
 end_ranges = as(paste0(sqd$splice_chr,":",sqd$splice_end,":*"),"GRanges")
@@ -46,40 +49,21 @@ ov_end=as.data.frame(findOverlaps(end_ranges,genes_granges_us))
 sqd$end_match = FALSE
 for (i in 1:nrow(sqd)) {
     ge = genes[ov_end[which(ov_end$queryHits==i),]$subjectHits,]$gene_id
-    a = c()
-    # Make sure each gene greps in sqd$gene_id
     end_matches=c()
     for (g in ge) {
-        a = c(a,grepl(g,sqd$gene_id[i]))
-        if (grepl(g,sqd$gene_id[i])) {
-            end_matches=c(end_matches,g)
-        }
+        end_matches=c(end_matches,g)
     }
-    sqd$end_match[i] = any(a)
     sqd$end_matches[i] = paste0(end_matches,collapse=",")
 }
-sqd$both_match = FALSE
+
 sqd$keep = FALSE
 sqd$keep_genes = ""
 for (i in 1:nrow(sqd)) {
     # If both have a value
     start_matches = unlist(str_split(sqd$start_matches[i],","))
     end_matches = unlist(str_split(sqd$end_matches[i],","))
-    #any(ov_start[which(ov_start$queryHits==i),]$subjectHits %in% ov_end[which(ov_end$queryHits==i),]$subjectHits
-    if (sqd$start_match[i] & sqd$end_match[i]) {
-        sqd$both_match[i] = any(start_matches %in% end_matches)
-        sqd$keep[i] = any(start_matches %in% end_matches)
-        sqd$keep_genes[i] = paste0(start_matches[which(start_matches %in% end_matches)],collapse=",")
-    } else {
-        if(!sqd$start_match[i] & sqd$end_match[i]) {
-            sqd$keep[i] = TRUE
-            sqd$keep_genes[i] = paste0(end_matches,collapse=",")
-        }
-        if(sqd$start_match[i] & !sqd$end_match[i]) {
-            sqd$keep[i] = TRUE
-            sqd$keep_genes[i] = paste0(start_matches,collapse=",")
-        }
-    }
+    sqd$keep[i] = any(start_matches %in% end_matches)
+    sqd$keep_genes[i] = paste0(start_matches[which(start_matches %in% end_matches)],collapse=",")
 }
 
 # Merge above to create final gene annotation for splice events, defaulting to sense-strand gene if there's a hit
@@ -95,7 +79,7 @@ for (i in 1:nrow(sqd)) {
     types = types[order(types=="protein_coding",decreasing = TRUE)]
     samestrand = c()
     for (m in mergeids) {
-        samestrand = c(samestrand,genes[m,]$strand==s_phen[i,]$splice_strand)
+        samestrand = c(samestrand,genes[m,]$strand==sqd[i,]$splice_strand)
     }
     if (sum(samestrand)>0) {
         sqd$merge_id[i] = paste0(mergeids[samestrand],collapse=",")
@@ -110,14 +94,10 @@ for (i in 1:nrow(sqd)) {
 }
 
 # Load full Gencode V33 GTF
-gen33 <- rtracklayer::import('/lustre/scratch126/humgen/projects/interval_rna/interval_rna_seq_n5188/alex/splice/sqtl_4732/autosomes_octCovs_groups/exons/gencode.v33.annotation.gtf.gz')
+gen33 <- rtracklayer::import('gencode.v33.annotation.gtf.gz')
 gen33=as.data.frame(gen33)
-exons = read.table("/lustre/scratch126/humgen/projects/interval_rna/interval_rna_seq_n5188/alex/splice/sqtl_4732/autosomes_octCovs_groups/exons/out_id_v33_gtype.txt.gz",
-                  sep="\t", header=TRUE)
-exons$chr = substr(exons$chr,4,30)
-exons$gene_id = substr(exons$gene_id,1,15)
-exons_granges = as(paste0(exons$chr,":",exons$start,"-",exons$end,":",exons$strand),"GRanges")
 
+sqd$range = paste0(sqd$splice_chr,":",sqd$splice_start,"-",sqd$splice_end,":",sqd$splice_strand)
 # Whether spliced region/intron overlaps an exon
 sqd$ov_exon = countOverlaps(as(sqd$range,"GRanges"),exons_granges,minoverlap=2,maxgap=-1)>0
 
@@ -142,7 +122,6 @@ cds$chr = str_replace(cds$chr,"chr","")
 cds$gene_id = substr(cds$gene_id,1,15)
 cds_granges = as(paste0(cds$chr,":",cds$start,"-",cds$end,":",cds$strand),"GRanges")
 sqd$ov_cds = countOverlaps(as(sqd$range,"GRanges"),cds_granges,minoverlap=2,maxgap=-1)>0
-
 
 # Import and overlap UniProt/Pfam domain annotations (downloaded as .bed from UCSC genome browser)
 valid_chr = c("chrX","chrY",paste0("chr",1:22))
@@ -179,10 +158,10 @@ unipDomainT = read.table('ucsc_10feb22/unipDomain.bed', sep="\t", quote="")
 unipDomainT = unipDomainT[which(unipDomainT$V1 %in% valid_chr),]
 unipDomain = as(paste0(unipDomainT$V1,":",unipDomainT$V2,"-",unipDomainT$V3,":",unipDomainT$V6),"GRanges")
 values(unipDomain) = DataFrame(type=unipDomainT$V27)
-ucscGenePfamT = read.table('ucsc_10feb22/ucscGenePfam.tsv', sep="\t", quote="")
-ucscGenePfamT = ucscGenePfamT[which(ucscGenePfamT$V2 %in% valid_chr),]
-ucscGenePfam = as(paste0(ucscGenePfamT$V2,":",ucscGenePfamT$V3,"-",ucscGenePfamT$V4,":",ucscGenePfamT$V7),"GRanges")
-values(ucscGenePfam) = DataFrame(type=ucscGenePfamT$V5)
+ucscGenePfamT = read.table('ucsc_10feb22/ucscGenePfam.bed', sep="\t", quote="")
+ucscGenePfamT = ucscGenePfamT[which(ucscGenePfamT$V1 %in% valid_chr),]
+ucscGenePfam = as(paste0(ucscGenePfamT$V1,":",ucscGenePfamT$V2,"-",ucscGenePfamT$V3,":",ucscGenePfamT$V6),"GRanges")
+values(ucscGenePfam) = DataFrame(type=ucscGenePfamT$V4)
 
 x = as(paste0("chr",sqd$range),"GRanges")
 hits=as.data.frame(findOverlaps(x,unipDomain,minoverlap=2,maxgap=-1))
@@ -212,4 +191,11 @@ for (i in 1:length(sqd$range)) {
 sqd$pfamDomain = doms
 sqd[which(!sqd$ov_cds),]$pfamDomain="-"
 
+sqd = sqd[,c('phenotype_id','splice_chr','splice_start','splice_end','splice_clu','splice_strand',
+             'keep','merge_id','merge_name','merge_type','merge_OS','range','ov_exon',
+             'p5_exon','p3_exon','p5_p3','p5_or_p3','ov_cds',
+             'unipLocTransMemb','unipLocCytopl','unipLocExtra','unipLocSignal','unipDomain','pfamDomain')]
+
+
 write.table(sqd,"sqtl_phenotypes_annotated.tsv",sep="\t",quote=FALSE,row.names=FALSE,col.names=TRUE)
+
