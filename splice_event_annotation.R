@@ -71,7 +71,9 @@ sqd$merge_id = ""
 sqd$merge_name = ""
 sqd$merge_type = ""
 sqd$merge_OS = FALSE
-for (i in 1:nrow(sqd)) {
+# Only iterate over rows in which keep_genes is not blank, therefore informative.
+non_blank <- which(sqd$keep_genes != "")
+for (i in non_blank) {
     mergeids = unlist(str_split(sqd[i,]$keep_genes,","))
     ## Order mergeids and supp by protein coding first, then others? (as other usually lncRNA)
     types = genes[mergeids,]$gene_type
